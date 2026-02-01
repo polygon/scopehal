@@ -86,6 +86,7 @@ public:
 	, m_waveform(nullptr)
 	, m_value(0)
 	, m_stype(type)
+	, m_color(std::nullopt)
 	, m_flags(flags)
 	{}
 
@@ -103,6 +104,9 @@ public:
 
 	///@brief General datatype stored in the stream
 	StreamType m_stype;
+
+	///@brief Optional per-stream color
+	std::optional<std::string> m_color;
 
 
 	/**

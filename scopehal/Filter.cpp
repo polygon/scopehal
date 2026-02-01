@@ -1613,6 +1613,14 @@ size_t Filter::AddStream(Unit yunit, const string& name, Stream::StreamType styp
 	return OscilloscopeChannel::AddStream(yunit, name, stype, flags);
 }
 
+size_t Filter::AddStreamColor(
+	Unit yunit, const std::string& name, Stream::StreamType stype, uint8_t flags, std::optional<std::string> color)
+{
+	m_ranges.push_back(0);
+	m_offsets.push_back(0);
+	return OscilloscopeChannel::AddStreamColor(yunit, name, stype, flags, color);
+}
+
 /**
 	@brief Adjusts gain and offset such that the active waveform occupies the entire vertical area of the plot
  */

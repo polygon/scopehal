@@ -135,6 +135,20 @@ size_t InstrumentChannel::AddStream(Unit yunit, const string& name, Stream::Stre
 }
 
 /**
+	@brief Adds a new data stream to the channel
+
+	@return Index of the new stream
+ */
+size_t InstrumentChannel::AddStreamColor(Unit yunit, const string& name, Stream::StreamType stype, uint8_t flags, std::optional<std::string> color)
+{
+	size_t index = m_streams.size();
+	auto stream = Stream(yunit, name, stype, flags);
+	stream.m_color = color;
+	m_streams.push_back(stream);
+	return index;
+}
+
+/**
 	@brief Sets the waveform data for a given stream, replacing any previous waveform.
 
 	Calling this function with pNew == GetData() is a legal no-op.

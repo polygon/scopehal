@@ -164,7 +164,11 @@ public:
 		const std::string& name,
 		Stream::StreamType stype,
 		uint8_t flags = 0) override;
-
+	virtual size_t AddStreamColor(Unit yunit,
+		const std::string& name,
+		Stream::StreamType stype,
+		uint8_t flags = 0,
+		std::optional<std::string> color = std::nullopt);
 	/**
 		@brief Helper method for constructors that adds a new STREAM_TYPE_PROTOCOL output stream
 

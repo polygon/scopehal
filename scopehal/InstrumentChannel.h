@@ -212,6 +212,17 @@ public:
 		m_streams[stream].m_value = value;
 	}
 
+	///@brief Gets the color of the stream
+	std::string GetStreamColor(size_t stream)
+	{
+		if (stream >= m_streams.size())
+		{
+			return 0;
+		}
+
+		return m_streams[stream].m_color ? *m_streams[stream].m_color : m_displaycolor;
+	}
+
 	/**
 		@brief Detach the capture data from this channel
 
@@ -269,6 +280,7 @@ protected:
 
 	virtual void ClearStreams();
 	virtual size_t AddStream(Unit yunit, const std::string& name, Stream::StreamType stype, uint8_t flags = 0);
+	virtual size_t AddStreamColor(Unit yunit, const std::string& name, Stream::StreamType stype, uint8_t flags, std::optional<std::string> color);
 
 	///@brief The instrument we're part of (may be null in the case of filters etc)
 	Instrument* m_instrument;

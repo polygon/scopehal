@@ -67,6 +67,21 @@ string CSVImportFilter::GetProtocolName()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Actual decoder logic
 
+const std::array<std::string, 12> colormap = {
+"#a6cee3",
+"#b2df8a",
+"#fb9a99",
+"#fdbf6f",
+"#cab2d6",
+"#ffff99",
+"#1f78b4",
+"#33a02c",
+"#e31a1c",
+"#ff7f00",
+"#6a3d9a",
+"#b15928"
+};
+
 void CSVImportFilter::OnFileNameChanged()
 {
 	#ifdef HAVE_NVTX
@@ -355,6 +370,7 @@ void CSVImportFilter::OnFileNameChanged()
 	vector<SparseAnalogWaveform*> anwaves;
 	for(size_t i=0; i<ncols; i++)
 	{
+		std::string color = colormap[i % colormap.size()];
 		LogIndenter li2;
 
 		//Assume digital, then change to analog if we see anything other than a 0/1 in the first 10 lines
@@ -372,7 +388,7 @@ void CSVImportFilter::OnFileNameChanged()
 		//Create the output stream
 		if(digital)
 		{
-			AddStream(Unit(Unit::UNIT_COUNTS), names[i], Stream::STREAM_TYPE_DIGITAL);
+			AddStreamColor(Unit(Unit::UNIT_COUNTS), names[i], Stream::STREAM_TYPE_DIGITAL, 0, color);
 
 			auto wfm = new SparseDigitalWaveform;
 			wfm->m_timescale = 1;
@@ -389,10 +405,12 @@ void CSVImportFilter::OnFileNameChanged()
 		else
 		{
 			//TODO: support arbitrarily many y axis unit fields, for now use unit 0 for everything
-			AddStream(
+			AddStreamColor(
 				Unit(static_cast<Unit::UnitType>(m_parameters[m_yunit0].GetIntVal())),
 				names[i],
-				Stream::STREAM_TYPE_ANALOG);
+				Stream::STREAM_TYPE_ANALOG,
+				0,
+				color);
 
 			auto wfm = new SparseAnalogWaveform;
 			wfm->m_timescale = 1;
@@ -409,6 +427,9 @@ void CSVImportFilter::OnFileNameChanged()
 	}
 
 	m_outputsChangedSignal.emit();
+
+	float max_range = 0.0;
+	float max_offset = 0.0;
 
 	//Process each actual waveform and figure out how to handle it
 	for(size_t i=0; i<ncols; i++)
@@ -498,6 +519,20 @@ void CSVImportFilter::OnFileNameChanged()
 					SetData(nullptr, i);
 			}
 		}
+
+		AutoscaleVertical(i);
+		if (max_range < GetVoltageRange(i))
+		{
+			max_offset = GetOffset(i);
+			max_range = GetVoltageRange(i);
+		}
+	}
+
+	// Process each actual waveform and figure out how to handle it
+	for (size_t i = 0; i < ncols; i++)
+	{
+		SetOffset(max_offset, i);
+		SetVoltageRange(max_range * 1.05, i);
 	}
 
 	double dt = GetTime() - start;
