@@ -275,7 +275,7 @@ void DriverStaticInit()
 
 	AddLoadDriverClass(SiglentLoad);
 
-	AddMiscInstrumentDriverClass(CSVStreamInstrument);
+	AddDriverClass(CSVStreamInstrument);
 
 	AddMultimeterDriverClass(OwonXDMMultimeter);
 	AddMultimeterDriverClass(RohdeSchwarzHMC8012Multimeter);

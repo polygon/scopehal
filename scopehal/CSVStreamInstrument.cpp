@@ -31,7 +31,7 @@
 	@file
 	@author Andrew D. Zonenberg
 	@brief Implementation of CSVStreamInstrument
-	@ingroup miscdrivers
+	@ingroup scopedrivers
  */
 
 #include "scopehal.h"
@@ -42,37 +42,36 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction / destruction
 
-/**
-	@brief Initialize the driver
-
-	@param transport	SCPITransport pointing at the instrument
- */
 CSVStreamInstrument::CSVStreamInstrument(SCPITransport* transport)
 	: SCPIDevice(transport, false)
 	, SCPIInstrument(transport, false)
+	, m_triggerArmed(false)
+	, m_triggerOneShot(false)
+	, m_appendingNext(false)
 {
 	m_vendor = "Antikernel Labs";
 	m_model = "CSV Stream";
 	m_serial = "N/A";
 	m_fwVersion = "1.0";
 
-	//Create initial stream
-	m_channels.push_back(new InstrumentChannel(
-		this,
-		"CH1",
-		"#808080",
-		Unit(Unit::UNIT_COUNTS),
-		Unit(Unit::UNIT_VOLTS),
-		Stream::STREAM_TYPE_ANALOG_SCALAR,
-		0));
+	const char* defaultColors[] = {"#ffff00", "#ff6abc", "#00ffff", "#00c100"};
+	for(size_t i = 0; i < 4; i++)
+	{
+		m_channels.push_back(new OscilloscopeChannel(
+			this,
+			string("CH") + to_string(i + 1),
+			defaultColors[i],
+			Unit(Unit::UNIT_FS),
+			Unit(Unit::UNIT_VOLTS),
+			Stream::STREAM_TYPE_ANALOG,
+			i));
+	}
 
-	//needs to run *before* the Oscilloscope class implementation
 	m_preloaders.push_front(sigc::mem_fun(*this, &CSVStreamInstrument::DoPreLoadConfiguration));
 }
 
 CSVStreamInstrument::~CSVStreamInstrument()
 {
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,18 +79,261 @@ CSVStreamInstrument::~CSVStreamInstrument()
 
 uint32_t CSVStreamInstrument::GetInstrumentTypes() const
 {
-	return INST_MISC;
+	return INST_OSCILLOSCOPE;
 }
 
 uint32_t CSVStreamInstrument::GetInstrumentTypesForChannel(size_t /*i*/) const
 {
-	return INST_MISC;
+	return INST_OSCILLOSCOPE;
 }
 
-///@brief Returns the constant driver name "csvstream"
 string CSVStreamInstrument::GetDriverNameInternal()
 {
 	return "csvstream";
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Device info
+
+void CSVStreamInstrument::FlushConfigCache()
+{
+}
+
+OscilloscopeChannel* CSVStreamInstrument::GetExternalTrigger()
+{
+	return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Channel configuration
+
+bool CSVStreamInstrument::IsChannelEnabled(size_t /*i*/)
+{
+	return true;
+}
+
+void CSVStreamInstrument::EnableChannel(size_t /*i*/)
+{
+}
+
+void CSVStreamInstrument::DisableChannel(size_t /*i*/)
+{
+}
+
+OscilloscopeChannel::CouplingType CSVStreamInstrument::GetChannelCoupling(size_t /*i*/)
+{
+	return OscilloscopeChannel::COUPLE_DC_50;
+}
+
+void CSVStreamInstrument::SetChannelCoupling(size_t /*i*/, OscilloscopeChannel::CouplingType /*type*/)
+{
+}
+
+vector<OscilloscopeChannel::CouplingType> CSVStreamInstrument::GetAvailableCouplings(size_t /*i*/)
+{
+	return {};
+}
+
+double CSVStreamInstrument::GetChannelAttenuation(size_t /*i*/)
+{
+	return 1;
+}
+
+void CSVStreamInstrument::SetChannelAttenuation(size_t /*i*/, double /*atten*/)
+{
+}
+
+unsigned int CSVStreamInstrument::GetChannelBandwidthLimit(size_t /*i*/)
+{
+	return 0;
+}
+
+void CSVStreamInstrument::SetChannelBandwidthLimit(size_t /*i*/, unsigned int /*limit_mhz*/)
+{
+}
+
+vector<unsigned int> CSVStreamInstrument::GetChannelBandwidthLimiters(size_t /*i*/)
+{
+	return {};
+}
+
+float CSVStreamInstrument::GetChannelVoltageRange(size_t /*i*/, size_t /*stream*/)
+{
+	return 5;
+}
+
+void CSVStreamInstrument::SetChannelVoltageRange(size_t /*i*/, size_t /*stream*/, float /*range*/)
+{
+}
+
+float CSVStreamInstrument::GetChannelOffset(size_t /*i*/, size_t /*stream*/)
+{
+	return 0;
+}
+
+void CSVStreamInstrument::SetChannelOffset(size_t /*i*/, size_t /*stream*/, float /*offset*/)
+{
+}
+
+string CSVStreamInstrument::GetProbeName(size_t /*i*/)
+{
+	return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Triggering
+
+Oscilloscope::TriggerMode CSVStreamInstrument::PollTrigger()
+{
+	if(!m_triggerArmed)
+		return TRIGGER_MODE_STOP;
+	return TRIGGER_MODE_TRIGGERED;
+}
+
+void CSVStreamInstrument::Start()
+{
+	m_triggerArmed = true;
+	m_triggerOneShot = false;
+}
+
+void CSVStreamInstrument::StartSingleTrigger()
+{
+	m_triggerArmed = true;
+	m_triggerOneShot = true;
+}
+
+void CSVStreamInstrument::Stop()
+{
+	m_triggerArmed = false;
+}
+
+void CSVStreamInstrument::ForceTrigger()
+{
+	m_triggerArmed = true;
+}
+
+bool CSVStreamInstrument::IsTriggerArmed()
+{
+	return m_triggerArmed;
+}
+
+void CSVStreamInstrument::PushTrigger()
+{
+}
+
+void CSVStreamInstrument::PullTrigger()
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Timebase
+
+vector<uint64_t> CSVStreamInstrument::GetSampleRatesNonInterleaved()
+{
+	return {1};
+}
+
+vector<uint64_t> CSVStreamInstrument::GetSampleRatesInterleaved()
+{
+	return {};
+}
+
+set<Oscilloscope::InterleaveConflict> CSVStreamInstrument::GetInterleaveConflicts()
+{
+	return {};
+}
+
+vector<uint64_t> CSVStreamInstrument::GetSampleDepthsNonInterleaved()
+{
+	return {1};
+}
+
+vector<uint64_t> CSVStreamInstrument::GetSampleDepthsInterleaved()
+{
+	return {};
+}
+
+uint64_t CSVStreamInstrument::GetSampleRate()
+{
+	return 1;
+}
+
+uint64_t CSVStreamInstrument::GetSampleDepth()
+{
+	return 1;
+}
+
+void CSVStreamInstrument::SetSampleDepth(uint64_t /*depth*/)
+{
+}
+
+void CSVStreamInstrument::SetSampleRate(uint64_t /*rate*/)
+{
+}
+
+void CSVStreamInstrument::SetTriggerOffset(int64_t /*offset*/)
+{
+}
+
+int64_t CSVStreamInstrument::GetTriggerOffset()
+{
+	return 0;
+}
+
+bool CSVStreamInstrument::IsInterleaving()
+{
+	return false;
+}
+
+bool CSVStreamInstrument::SetInterleaving(bool /*combine*/)
+{
+	return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Waveform management
+
+bool CSVStreamInstrument::IsAppendingToWaveform()
+{
+	return m_appendingNext;
+}
+
+bool CSVStreamInstrument::PopPendingWaveform()
+{
+	lock_guard<mutex> lock(m_pendingWaveformsMutex);
+	if(m_pendingWaveforms.empty())
+		return false;
+
+	auto& set = m_pendingWaveforms.front();
+
+	for(auto it : set)
+	{
+		auto chan = it.first.m_channel;
+		auto data = dynamic_cast<SparseAnalogWaveform*>(it.second);
+		auto nstream = it.first.m_stream;
+
+		auto oldWaveform = dynamic_cast<SparseAnalogWaveform*>(chan->GetData(nstream));
+		if(oldWaveform && data && m_appendingNext)
+		{
+			size_t len = data->size();
+			oldWaveform->PrepareForCpuAccess();
+			data->PrepareForCpuAccess();
+			for(size_t i=0; i<len; i++)
+			{
+				oldWaveform->m_samples.push_back(data->m_samples[i]);
+				oldWaveform->m_offsets.push_back(data->m_offsets[i]);
+				oldWaveform->m_durations.push_back(data->m_durations[i]);
+			}
+			oldWaveform->m_revision++;
+			oldWaveform->MarkModifiedFromCpu();
+		}
+		else
+			chan->SetData(data, nstream);
+	}
+	m_pendingWaveforms.pop_front();
+
+	m_appendingNext = true;
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,20 +353,18 @@ void CSVStreamInstrument::DoPreLoadConfiguration(
 		auto& cnode = it.second;
 		auto index = cnode["index"].as<int>();
 
-		//If we don't have the channel yet, create it
 		while(m_channels.size() <= (size_t)index)
 		{
-			m_channels.push_back(new InstrumentChannel(
+			m_channels.push_back(new OscilloscopeChannel(
 				this,
 				string("CH") + to_string(index),
 				"#808080",
-				Unit(Unit::UNIT_COUNTS),
+				Unit(Unit::UNIT_FS),
 				Unit(Unit::UNIT_VOLTS),
-				Stream::STREAM_TYPE_ANALOG_SCALAR,
+				Stream::STREAM_TYPE_ANALOG,
 				m_channels.size()));
 		}
 
-		//Channel exists, register its ID
 		auto chan = m_channels[index];
 		idmap.emplace(cnode["id"].as<int>(), chan);
 	}
@@ -135,94 +375,75 @@ void CSVStreamInstrument::DoPreLoadConfiguration(
 
 bool CSVStreamInstrument::AcquireData()
 {
-	//Read a line of input (may or may not be relevant to us)
 	auto line = Trim(m_transport->ReadReply(false));
 
-	//Trim off anything before "CSV" prefix and discard mismatched lines
+	if(line.empty())
+		return true;
+
 	auto start = line.find("CSV-");
 	if(start == string::npos)
 		return true;
 	line = line.substr(start);
 
-	//Split up at commas
 	auto fields = explode(line, ',');
 
 	if(fields[0] == "CSV-NAME")
 	{
-		//Name all of our channels
-		for(size_t i=1; i<fields.size(); i++)
-		{
-			//Add a new channel
-			if(m_channels.size() < i)
-			{
-				m_channels.push_back(new InstrumentChannel(
-					this,
-					fields[i],
-					"#808080",
-					Unit(Unit::UNIT_COUNTS),
-					Unit(Unit::UNIT_VOLTS),
-					Stream::STREAM_TYPE_ANALOG_SCALAR,
-					i-1));
-			}
-
-			//Rename an existing channel
-			else
-				m_channels[i-1]->SetDisplayName(fields[i]);
-		}
+		for(size_t i=1; i<fields.size() && i <= m_channels.size(); i++)
+			m_channels[i-1]->SetDisplayName(fields[i]);
 	}
 
 	else if(fields[0] == "CSV-UNIT")
 	{
-		//Update units, creating new channels if needed
-		for(size_t i=1; i<fields.size(); i++)
+		for(size_t i=1; i<fields.size() && i <= m_channels.size(); i++)
 		{
 			Unit yunit(fields[i]);
-
-			//Add a new channel
-			if(m_channels.size() < i)
-			{
-				m_channels.push_back(new InstrumentChannel(
-					this,
-					string("CH") + to_string(i),
-					"#808080",
-					Unit(Unit::UNIT_COUNTS),
-					yunit,
-					Stream::STREAM_TYPE_ANALOG_SCALAR,
-					i-1));
-			}
-
-			//Rename an existing channel
-			else
-				m_channels[i-1]->SetYAxisUnits(yunit, 0);
+			m_channels[i-1]->SetYAxisUnits(yunit, 0);
 		}
 	}
 
 	else if(fields[0] == "CSV-DATA")
 	{
-		//Update data, creating new channels if needed
-		for(size_t i=1; i<fields.size(); i++)
+		if(fields.size() < 3)
+			return true;
+
+		int64_t timestamp = stoll(fields[1]);
+
+		SequenceSet s;
+
+		for(size_t i=2; i<fields.size(); i++)
 		{
-			//Add a new channel if it doesn't exist
-			if(m_channels.size() < i)
-			{
-				m_channels.push_back(new InstrumentChannel(
-					this,
-					string("CH") + to_string(i),
-					"#808080",
-					Unit(Unit::UNIT_COUNTS),
-					Unit(Unit::UNIT_VOLTS),
-					Stream::STREAM_TYPE_ANALOG_SCALAR,
-					i-1));
-			}
+			size_t chanIndex = i - 2;
 
-			auto value = m_channels[i-1]->GetYAxisUnits(0).ParseString(fields[i]);
-			m_channels[i-1]->SetScalarValue(0, value);
+			if(chanIndex >= m_channels.size())
+				break;
+
+			auto chan = dynamic_cast<OscilloscopeChannel*>(m_channels[chanIndex]);
+			if(!chan)
+				continue;
+
+			auto value = chan->GetYAxisUnits(0).ParseString(fields[i]);
+
+			auto wfm = new SparseAnalogWaveform;
+			wfm->m_timescale = 1;
+			wfm->m_triggerPhase = 0;
+			wfm->m_startTimestamp = time(nullptr);
+			wfm->m_startFemtoseconds = 0;
+			wfm->PrepareForCpuAccess();
+			wfm->Resize(1);
+			wfm->m_offsets[0] = timestamp;
+			wfm->m_durations[0] = 1;
+			wfm->m_samples[0] = value;
+			wfm->MarkModifiedFromCpu();
+
+			s[StreamDescriptor(chan, 0)] = wfm;
 		}
-	}
 
-	else
-	{
-		//Nothing to do, it's probably stdout data or something irrelevant
+		if(!s.empty())
+		{
+			lock_guard<mutex> lock(m_pendingWaveformsMutex);
+			m_pendingWaveforms.push_back(s);
+		}
 	}
 
 	return true;
